@@ -4,22 +4,18 @@ function Square({value, onSquareClick}) {
   return (<button className="square" onClick={onSquareClick}>{value}</button>)
 }
 
-
-export default function Board() {
-  const [squares, setSquares] = useState(Array(9).fill(null));
-  const [xIsNext, setXIsNext] = useState(true);
+function Board({squares, xIsNext, onPlay}) {
 
   function handleClick(i) {
-    const nextsuqare = squares.slice();
+    const nextSquares = squares.slice();
     if (squares[i] || calculateWinner(squares)) return;
     if (xIsNext) {
-      nextsuqare[i] = 'X';
+      nextSquares[i] = 'X';
     }
     else {
-      nextsuqare[i] = 'O';
+      nextSquares[i] = 'O';
     }
-    setSquares(nextsuqare);
-    setXIsNext(!xIsNext);
+    onPlay(nextSquares);
   }
 
   function calculateWinner(squares) {
@@ -44,6 +40,7 @@ export default function Board() {
 
   const winner = calculateWinner(squares);
   let status;
+
   if (winner) {
     status = "Winner: " + winner;
   }
@@ -55,6 +52,7 @@ export default function Board() {
   <>
     <div className = "status">{status}</div>
     <div className="board-row">
+{/* 화살표 함수를 사용하는 이유: handleClick(0)을 실행하면 setSquares가 호출되어 컴포넌트가 리랜더링 되고 handleClick(0)가 다시 호출되는 무한 루프에 빠지게 된다. */}
       <Square value = {squares[0]} onSquareClick={() => handleClick(0)}/>
       <Square value = {squares[1]} onSquareClick={() => handleClick(1)}/>
       <Square value = {squares[2]} onSquareClick={() => handleClick(2)}/>
@@ -71,4 +69,55 @@ export default function Board() {
     </div>
   </>
   );
+}
+
+export default function Game() {
+  const [history, setHistory] = useState([Array(9).fill(null)]); //history[0] == [null, null, null ...]
+  const [xIsNext, setXIsNext] = useState(true);
+  const [currentMove, setCurrentMove] = useState(0);
+  const currentSquares = history[currentMove];
+  
+
+  function handlePlay(nextSquares) {
+    const nextHistory = [...history.slice(0, currentMove+1), nextSquares];
+    setHistory(nextHistory);
+    setCurrentMove(nextHistory.length - 1);
+    setXIsNext(!xIsNext);
+  }
+  
+  function jumpTo(nextMove){
+    // currentMove를 변경하면 currentMove를 사용하는 currentSquares가 변경되고 결과적으로 Board가 리렌더링 된다. 
+    // state가 변할때 Game 컴포넌트 전체가 리렌더링 되지만 해당 함수에서 history 값은 변하지 않으므로 
+    // history.map()으로 그려지는 list는 변하지 않는것이 정상이다.
+    setCurrentMove(nextMove); 
+    setXIsNext(nextMove%2 === 0);
+  }
+
+  const moves = history.map((squares, move) => {
+    let description;
+    if (move > 0) {
+      description = "Go to move #" + move;
+    }
+    else {
+      description = "Go to game start";
+    }
+
+    return (
+    <li key={move}>
+      <button onClick={() => jumpTo(move)}>{description}</button>
+    </li>
+    )
+  });
+
+  return (
+    <div className="game">
+      <div className="game-board">
+        <Board squares={currentSquares} xIsNext={xIsNext} onPlay={handlePlay}/>
+      </div>
+      <div className="game-info">
+        <ol>{moves}</ol>
+      </div>
+    </div>
+  ) 
+
 }
